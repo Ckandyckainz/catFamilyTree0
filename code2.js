@@ -1,7 +1,7 @@
 // 5 generations
 
 let mcan = document.getElementById("mcan");
-mcan.width = 3000;
+mcan.width = 4000;
 mcan.height = 1000;
 let mctx = mcan.getContext("2d");
 let prepcan = document.getElementById("prepcan");
@@ -671,113 +671,101 @@ function updatePhenotypes(cat){
 
 class FamilyTreeChunk{
     constructor(parent1, parent2, kittens){
-        
+        this.isChunk = true;
+        prepctx.fillStyle = "gray";
+        prepctx.fillRect(0, 0, prepcan.width, prepcan.height);
+        let x = 70;
+        let stemXs = [];
+        for (let i=0; i<kittens.length; i++) {
+            let kitten = kittens[i];
+            let stemX = x;
+            if (kitten.isChunk) {
+                prepctx.putImageData(kitten.imgdt, x, 160);
+                x += kitten.imgdt.width;
+                stemX += kitten.stemX;
+            } else {
+                let face = new CatHeadFront(kitten.appearance, x/1000, 0.23, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
+                face.drawSelf(prepctx, 1000);
+                x += 140;
+                if (i == kittens.length-1) {
+                    x -= 70;
+                }
+            }
+            stemXs.push(stemX);
+        }
+        this.stemX = (stemXs[0]+stemXs[stemXs.length-1])/2-70;
+        if (kittens.length < 2) {
+            this.stemX = 70;
+        }
+        prepctx.strokeStyle = "black";
+        prepctx.lineWidth = 3;
+        prepctx.beginPath();
+        stemXs.forEach((stemX)=>{
+            prepctx.moveTo(stemX, 150);
+            prepctx.lineTo(stemX, 185);
+        });
+        if (kittens.length >= 2) {
+            prepctx.moveTo(stemXs[0], 150);
+            prepctx.lineTo(stemXs[stemXs.length-1], 150);
+            prepctx.moveTo(this.stemX+70, 70);
+            prepctx.lineTo(this.stemX+70, 150);
+        }
+        prepctx.stroke();
+        let face = new CatHeadFront(parent1.appearance, this.stemX/1000, 0.07, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
+        face.drawSelf(prepctx, 1000);
+        if (parent2 != "none") {
+            prepctx.strokeStyle = "black";
+            prepctx.lineWidth = 4;
+            prepctx.beginPath();
+            prepctx.moveTo(this.stemX+45, 70);
+            prepctx.lineTo(this.stemX+95, 70);
+            prepctx.stroke();
+            face = new CatHeadFront(parent2.appearance, (this.stemX+140)/1000, 0.07, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
+            face.drawSelf(prepctx, 1000);
+            if (kittens.length < 2) {
+                this.imgdt = prepctx.getImageData(0, 0, 315, prepcan.height);
+            } else {
+                this.imgdt = prepctx.getImageData(0, 0, x, prepcan.height);
+            }
+        } else {
+            this.imgdt = prepctx.getImageData(0, 0, 175, prepcan.height);
+        }
     }
 }
 
 let cat = new Cat();
-fillInfo(cat, 2);
+fillInfo(cat, 3);
 displayInfo(cat);
 
 function displayInfo(){
+    let kittenChunks = [];
+    cat.kittens.forEach((kitten)=>{
+        kittenChunks.push(new FamilyTreeChunk(kitten, kitten.partner, kitten.kittens));
+    });
+    let catChunk = new FamilyTreeChunk(cat, cat.partner, kittenChunks);
+    let siblingChunks = [];
+    cat.siblings.forEach((sibling)=>{
+        siblingChunks.push(new FamilyTreeChunk(sibling, sibling.partner, sibling.kittens));
+    });
+    siblingChunks.splice(Math.floor(siblingChunks.length/2), 0, catChunk);
+    let parentsChunk = new FamilyTreeChunk(...cat.parents, siblingChunks);
+    let parent0SiblingChunks = [];
+    cat.parents[0].siblings.forEach((sibling)=>{
+        parent0SiblingChunks.push(new FamilyTreeChunk(sibling, sibling.partner, sibling.kittens));
+    });
+    parent0SiblingChunks.splice(Math.floor(parent0SiblingChunks.length/2), 0, parentsChunk);
+    let grandparents0Chunk = new FamilyTreeChunk(...cat.parents[0].parents, parent0SiblingChunks);
+    let imgdt = grandparents0Chunk.imgdt;
+    if (imgdt.width > 4000) {
+        mcan.width = imgdt.width;
+        mcan.style.width = mcan.width+"px";
+    } else {
+        mcan.width = 4000;
+        mcan.style.width = "4000px";
+    }
     mctx.fillStyle = "gray";
     mctx.fillRect(0, 0, mcan.width, mcan.height);
-    mctx.translate(mcan.width/2-500, 0);
-    let face = new CatHeadFront(cat.appearance, 0.43, 0.5, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
-    face.drawSelf(mctx, 1000);
-    if (cat.partner != "none") {
-        face = new CatHeadFront(cat.partner.appearance, 0.57, 0.5, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
-        face.drawSelf(mctx, 1000);
-        mctx.strokeStyle = "black";
-        mctx.lineWidth = 4;
-        mctx.beginPath();
-        mctx.moveTo(475, 500);
-        mctx.lineTo(525, 500);
-        mctx.stroke();
-        if (cat.kittens.length != 0) {
-            let grandKittens = [];
-            let grandKittensX = [];
-            let siblingsRelX = 0;
-            let siblingsGroupRelPos = [];
-            mctx.strokeStyle = "black";
-            mctx.lineWidth = 3;
-            mctx.beginPath();
-            mctx.moveTo(500, 500);
-            mctx.lineTo(500, 580);
-            mctx.stroke();
-            cat.kittens.forEach((kitten)=>{
-                let margin = 0.09;
-                let marginRight = 0;
-                if (kitten.kittens.length < 2) {
-                    margin += 0.09;
-                    marginRight = -0.09;
-                    if (kitten.partner != "none") {
-                        marginRight = 0.05;
-                    }
-                }
-                siblingsRelX += margin;
-                siblingsGroupRelPos.push(siblingsRelX);
-                for (let i=0; i<kitten.kittens.length; i++) {
-                    grandKittens.push(kitten.kittens[i]);
-                    grandKittensX.push(siblingsRelX);
-                    siblingsRelX += 0.14;
-                }
-                siblingsGroupRelPos.push(siblingsRelX-0.14);
-                siblingsRelX += margin+marginRight-0.14;
-            });
-            let kittenXs = [];
-            for (let i=0; i<cat.kittens.length; i++) {
-                kittenXs.push((siblingsGroupRelPos[i*2]+siblingsGroupRelPos[i*2+1])/2);
-            }
-            let firstKittenX = kittenXs[0];
-            let lastKittenX = kittenXs[kittenXs.length-1];
-            let displacement = 0.57-(firstKittenX+lastKittenX)/2;
-            mctx.strokeStyle = "black";
-            mctx.lineWidth = 3;
-            mctx.beginPath();
-            mctx.moveTo((firstKittenX+displacement-0.07)*1000, 580);
-            mctx.lineTo((lastKittenX+displacement-0.07)*1000, 580);
-            mctx.stroke();
-            for (let i=0; i<grandKittens.length; i++) {
-                let pos = grandKittensX[i]+displacement;
-                face = new CatHeadFront(grandKittens[i].appearance, pos, 0.82, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
-                face.drawSelf(mctx, 1000);
-                mctx.strokeStyle = "black";
-                mctx.lineWidth = 3;
-                mctx.beginPath();
-                mctx.moveTo(pos*1000, 740);
-                mctx.lineTo(pos*1000, 780);
-                mctx.stroke();
-            }
-            for (let i=0; i<cat.kittens.length; i++) {
-                let kitten = cat.kittens[i];
-                let kittenX = kittenXs[i]+displacement;
-                face = new CatHeadFront(kitten.appearance, kittenX-0.07, 0.66, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
-                face.drawSelf(mctx, 1000);
-                mctx.strokeStyle = "black";
-                mctx.lineWidth = 3;
-                mctx.beginPath();
-                mctx.moveTo(kittenX*1000-70, 620);
-                mctx.lineTo(kittenX*1000-70, 580);
-                if (kitten.partner != "none") {
-                    if (kitten.kittens.length > 1) {
-                        mctx.moveTo((siblingsGroupRelPos[i*2]+displacement)*1000, 740);
-                        mctx.lineTo((siblingsGroupRelPos[i*2+1]+displacement)*1000, 740);
-                        mctx.moveTo(kittenX*1000, 660);
-                        mctx.lineTo(kittenX*1000, 740);
-                    }
-                    mctx.stroke();
-                    face = new CatHeadFront(kitten.partner.appearance, kittenX+0.07, 0.66, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
-                    face.drawSelf(mctx, 1000);
-                    mctx.lineWidth = 4;
-                    mctx.beginPath();
-                    mctx.moveTo(kittenX*1000-25, 660);
-                    mctx.lineTo(kittenX*1000+25, 660);
-                }
-                mctx.stroke();
-            }
-        }
-    }
+    mctx.putImageData(imgdt, 0, 100);
 }
 
 function fillInfo(cat, counter){
