@@ -10,6 +10,7 @@ prepcan.height = mcan.height;
 let prepctx = prepcan.getContext("2d");
 
 let catIdCounter = 0;
+let catPoss = [];
 const near0 = 0.0000001;
 
 function newNormalCatColor(){
@@ -671,6 +672,7 @@ function updatePhenotypes(cat){
 
 class FamilyTreeChunk{
     constructor(parent1, parent2, kittens){
+        this.catPoss = [];
         this.isChunk = true;
         prepctx.fillStyle = "gray";
         prepctx.fillRect(0, 0, prepcan.width, prepcan.height);
@@ -680,10 +682,16 @@ class FamilyTreeChunk{
             let kitten = kittens[i];
             let stemX = x;
             if (kitten.isChunk) {
+                for (let i=0; i<kitten.catPoss.length; i+=3) {
+                    this.catPoss.push(kitten.catPoss[i]);
+                    this.catPoss.push(kitten.catPoss[i+1]+x);
+                    this.catPoss.push(kitten.catPoss[i+2]+160);
+                }
                 prepctx.putImageData(kitten.imgdt, x, 160);
                 x += kitten.imgdt.width;
                 stemX += kitten.stemX;
             } else {
+                this.catPoss.push(kitten, x, 230);
                 let face = new CatHeadFront(kitten.appearance, x/1000, 0.23, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
                 face.drawSelf(prepctx, 1000);
                 x += 140;
@@ -713,6 +721,7 @@ class FamilyTreeChunk{
         prepctx.stroke();
         let face = new CatHeadFront(parent1.appearance, this.stemX/1000, 0.07, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
         face.drawSelf(prepctx, 1000);
+        this.catPoss.push(parent1, this.stemX, 70);
         if (parent2 != "none") {
             prepctx.strokeStyle = "black";
             prepctx.lineWidth = 4;
@@ -722,6 +731,7 @@ class FamilyTreeChunk{
             prepctx.stroke();
             face = new CatHeadFront(parent2.appearance, (this.stemX+140)/1000, 0.07, 0.03, 0, 0, 0.1, 0, 0, 0, 1, 1, 0, 0, 1, 1, [0, 0, 0, 0], 0, 0, 0);
             face.drawSelf(prepctx, 1000);
+            this.catPoss.push(parent2, this.stemX+140, 70);
             if (kittens.length < 2) {
                 this.imgdt = prepctx.getImageData(0, 0, 315, prepcan.height);
             } else {
@@ -766,23 +776,34 @@ function displayInfo(){
     mctx.fillStyle = "gray";
     mctx.fillRect(0, 0, mcan.width, mcan.height);
     mctx.putImageData(imgdt, 0, 100);
+    let centerPos = {x: 0, y: 0};
+    catPoss = [];
+    for (let i=0; i<grandparents0Chunk.catPoss.length; i+=3) {
+        catPoss.push(grandparents0Chunk.catPoss[i]);
+        catPoss.push(grandparents0Chunk.catPoss[i+1]);
+        catPoss.push(grandparents0Chunk.catPoss[i+2]+100);
+        if (grandparents0Chunk.catPoss[i].id == cat.id) {
+            centerPos.x = grandparents0Chunk.catPoss[i+1];
+            centerPos.y = grandparents0Chunk.catPoss[i+2]+100;
+        }
+    }
+    // https://developer.mozilla.org/en-US/docs/Web/API/Window/scrollTo
+    window.scrollTo({
+        top: centerPos.y-window.innerHeight/2+50,
+        left: centerPos.x-window.innerWidth/2,
+        behavior: "instant",
+    });
 }
 
 function fillInfo(cat, counter){
     if (counter > 0) {
         if (cat.parents.length == 0) {
             cat.createParents();
-            cat.parents.forEach((parent)=>{
-                fillInfo(parent, counter-1);
-            });
             for (let i=0; i<Math.random()*3; i++) {
                 new Cat(cat.parents);
             }
             let kittens = cat.parents[0].kittens;
             kittens.forEach((kitten)=>{
-                if (kitten.id != cat.id) {
-                    fillInfo(kitten, counter-1);
-                }
                 let siblings = kittens.slice();
                 for (let i=0; i<siblings.length; i++) {
                     if (siblings[i].id == kitten.id) {
@@ -802,18 +823,36 @@ function fillInfo(cat, counter){
                     cat.partner.sex = "male";
                 }
                 cat.partner.partner = cat;
-                fillInfo(cat.partner, counter-1);
                 if (Math.random() < 0.8) {
                     for (let i=0; i<Math.random()*3+1; i++) {
                         let kitten = new Cat([cat, cat.partner]);
-                        fillInfo(kitten, counter-1);
-                        //console.log(counter);
                     }
                 }
             }
         }
+        fillInfo(cat.parents[0], counter-1);
+        fillInfo(cat.parents[1], counter-1);
+        if (cat.partner != "none") {
+            fillInfo(cat.partner, counter-1);
+        }
+        cat.siblings.forEach((sibling)=>{
+            fillInfo(sibling, counter-1);
+        });
+        cat.kittens.forEach((kitten)=>{
+            fillInfo(kitten, counter-1);
+        });
     }
 }
+
+mcan.addEventListener("click", (event)=>{
+    for (let i=0; i<catPoss.length; i+=3) {
+        if ((event.offsetX-catPoss[i+1])**2+(event.offsetY-catPoss[i+2])**2 <= 1024) {
+            cat = catPoss[i];
+            fillInfo(cat, 3);
+            displayInfo();
+        }
+    }
+});
 
 function newIndividualName(){
     if (Math.random() < 0.5) {
